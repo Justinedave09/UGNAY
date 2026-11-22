@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UGNAY - Barangay Appointment & Incident Reporting System</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+    <div class="header-container">
+        <a href="#" class="logo" onclick="goHome(); return false;" title="Return to UGNAY Home">
+            <svg viewBox="0 0 24 24">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>UGNAY</span>
+        </a>
+        <div id="headerUserControls" class="header-actions hidden">
+            <span id="headerRoleBadge" class="role-badge-header">RESIDENT</span>
+            <button id="logoutBtn" class="btn btn-danger btn-sm" onclick="handleLogout()">Logout</button>
+        </div>
+    </div>
+</header>
+
+<main>
+
+    <section id="authView" class="view-panel">
+        <div class="auth-wrapper">
+            <div class="auth-card">
+
+                <div id="loginFormContainer">
+                    <div class="auth-header">
+                        <h2>Sign In to UGNAY</h2>
+                        <p>Barangay Appointment & Incident Reporting System</p>
+                    </div>
+                    <div class="demo-accounts-box">
+                        <strong>Quick Fill Demo Accounts (Password: password123):</strong>
+                        <div class="demo-pill-group">
+                            <button type="button" class="demo-pill" onclick="fillDemoLogin('resident@ugnay.gov.ph')">👤 Resident</button>
+                            <button type="button" class="demo-pill" onclick="fillDemoLogin('admin@ugnay.gov.ph')">⚙️ Admin / Staff</button>
+                            <button type="button" class="demo-pill" onclick="fillDemoLogin('responder@ugnay.gov.ph')">🚑 Responder</button>
+                        </div>
+                    </div>
+                    <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+                        <div class="form-group">
+                            <label for="loginEmail">Email Address</label>
+                            <input type="email" id="loginEmail" class="form-control" placeholder="resident@ugnay.gov.ph" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="loginPassword">Password</label>
+                            <div class="password-wrap">
+                                <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+                                <button type="button" class="pw-toggle" onclick="togglePassword('loginPassword', this)" aria-label="Show password">👁️</button>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-full">Sign In</button>
+                    </form>
+                    <div class="auth-switch">
+                        Don't have an account? <a href="#" onclick="toggleAuthForm('register'); return false;">Register Now</a>
+                    </div>
+                </div>
+
+                <div id="registerFormContainer" class="hidden">
+                    <div class="auth-header">
+                        <h2>Create an Account</h2>
+                        <p>Register for Barangay Digital Services</p>
+                    </div>
+                    <form id="registerForm" onsubmit="handleRegisterSubmit(event)">
+                        <div class="form-group">
+                            <label for="regFullName">Full Name / Group Identifier</label>
+                            <input type="text" id="regFullName" class="form-control" placeholder="e.g., AppDev Resident" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regEmail">Email Address</label>
+                            <input type="email" id="regEmail" class="form-control" placeholder="appdev@ugnay.gov.ph" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regPassword">Password</label>
+                            <div class="password-wrap">
+                                <input type="password" id="regPassword" class="form-control" placeholder="••••••••" required autocomplete="new-password">
+                                <button type="button" class="pw-toggle" onclick="togglePassword('regPassword', this)" aria-label="Show password">👁️</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Select Account Role</label>
+                            <div class="role-selector">
+                                <div class="role-option active" onclick="selectRegisterRole('Resident', this)">Resident</div>
+                                <div class="role-option" onclick="selectRegisterRole('Responder', this)">Responder</div>
+                                <div class="role-option" onclick="selectRegisterRole('Admin', this)">Admin</div>
+                            </div>
+                            <input type="hidden" id="selectedRole" value="Resident">
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="dpaConsent" required>
+                            <label for="dpaConsent">I consent to the collection and processing of my personal data under the <strong>Data Privacy Act of 2012 (RA 10173)</strong> for barangay appointments and incident verification.</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="emailAdvisory">
+                            <label for="emailAdvisory">Opt-in to receive barangay announcements and safety advisories via email.</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-full">Create Account</button>
+                    </form>
+                    <div class="auth-switch">
+                        Already have an account? <a href="#" onclick="toggleAuthForm('login'); return false;">Back to Login</a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <section id="dashboardView" class="view-panel hidden">
+        <div class="dashboard-container">
+
+            <div class="welcome-banner">
+                <div>
+                    <h1>Welcome to UGNAY</h1>
+                    <p id="userGreeting">Signed in to Barangay Digital Services & Incident Reporting Portal</p>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <span style="background: rgba(255,255,255,0.16); padding: 0.45rem 0.85rem; border-radius: 8px; font-size: 0.8rem; font-weight: 600;">
+                        🇵🇭 Nationwide • Any Barangay in the Philippines
+                    </span>
+                </div>
+            </div>
+
+            <nav id="desktopNav" class="dash-nav"></nav>
+
+            <div id="residentWorkspace" class="hidden">
+
+                <div id="resTabOverview" class="role-tab">
+                    <div class="kpi-grid" style="margin-bottom: 1.25rem;">
+                        <div class="kpi-card">
+                            <div class="kpi-label">My Appointments</div>
+                            <div class="kpi-value" id="resKpiAppts">0</div>
+                        </div>
+                        <div class="kpi-card red">
+                            <div class="kpi-label">Incident Reports</div>
+                            <div class="kpi-value" id="resKpiReports">0</div>
+                        </div>
+                        <div class="kpi-card yellow">
+                            <div class="kpi-label">Pending Review</div>
+                            <div class="kpi-value" id="resKpiPending">0</div>
+                        </div>
+                        <div class="kpi-card green">
+                            <div class="kpi-label">Active Advisories</div>
+                            <div class="kpi-value" id="resKpiAdvisories">0</div>
+                        </div>
+                    </div>
+
+                    <div class="two-col-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">📅 My Document Appointments</h3>
+                                <button class="btn btn-primary btn-sm" onclick="switchRoleTab('resTabBook')">+ Book New</button>
+                            </div>
+                            <div id="resAppointmentsList" class="record-list"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">🚨 My Incident Reports</h3>
+                                <button class="btn btn-danger btn-sm" onclick="switchRoleTab('resTabReport')">+ Report Incident</button>
+                            </div>
+                            <div id="resReportsList" class="record-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="resTabBook" class="role-tab hidden">
+                    <div class="card" style="max-width: 680px; margin: 0 auto;">
+                        <div class="card-header">
+                            <h3 class="card-title">📅 Schedule Barangay Appointment</h3>
+                        </div>
+                        <form onsubmit="handleBookAppointment(event)">
+                            <div class="form-group">
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-bottom:0.4rem;">
+                                    <label for="apptService" style="margin:0;">Select Barangay Service / Document</label>
+                                    <a href="#" id="manageServicesLink" class="manage-custom-link hidden" onclick="openCustomServices(); return false;">⚙️ Saved custom</a>
+                                </div>
+                                <select id="apptService" class="form-control" onchange="handleServiceSelectChange()" required></select>
+                                <input type="text" id="apptServiceCustom" class="form-control hidden" style="margin-top:0.5rem;" placeholder="Type the service / document name you need">
+                            </div>
+                            <div class="form-group">
+                                <label for="apptDate">Preferred Date</label>
+                                <input type="date" id="apptDate" class="form-control" onchange="renderAvailableSlots()" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Select Time Slot (Double-Booking Protected)</label>
+                                <div id="slotGrid" class="slot-grid"></div>
+                                <input type="hidden" id="selectedTimeSlot" value="">
+                            </div>
+                            <div class="form-group">
+                                <label for="apptPurpose">Purpose of Request</label>
+                                <textarea id="apptPurpose" class="form-control" placeholder="e.g., Employment requirement, school scholarship..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-full">Confirm Appointment Booking</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div id="resTabReport" class="role-tab hidden">
+                    <div class="card" style="max-width: 720px; margin: 0 auto;">
+                        <div class="card-header">
+                            <h3 class="card-title">🚨 Submit Incident Report</h3>
+                            <span class="ai-tag clean">🤖 Sightengine AI Photo Screening Active</span>
+                        </div>
+                        <form onsubmit="handleSubmitIncident(event)">
+                            <div class="two-col-grid">
+                                <div class="form-group">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-bottom:0.4rem;">
+                                        <label for="incCategory" style="margin:0;">Incident Category</label>
+                                        <a href="#" id="manageCategoriesLink" class="manage-custom-link hidden" onclick="openCustomCategories(); return false;">⚙️ Saved custom</a>
+                                    </div>
+                                    <select id="incCategory" class="form-control" onchange="handleCategorySelectChange()" required></select>
+                                    <input type="text" id="incCategoryCustom" class="form-control hidden" style="margin-top:0.5rem;" placeholder="Type the incident category name">
+                                </div>
+                                <div class="form-group">
+                                    <label for="incType">Report Classification</label>
+                                    <select id="incType" class="form-control">
+                                        <option value="INCIDENT">Emergency Incident</option>
+                                        <option value="CONCERN">Community Concern</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Incident Location — Anywhere in the Philippines</label>
+                                <div class="map-box">
+                                    <div class="map-header">
+                                        <span id="coordsDisplay" style="font-family: monospace; font-size: 0.8rem; font-weight: 700; color: var(--navy-blue);">Lat: 14.6507, Lng: 120.9841</span>
+                                        <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                                            <button type="button" class="btn btn-outline btn-sm" onclick="switchMapLayer()">🗺️ Switch Map</button>
+                                            <button type="button" id="gpsBtn" class="btn btn-outline btn-sm" onclick="useRealGpsPin()">📍 Use My GPS</button>
+                                            <button type="button" class="btn btn-outline btn-sm" id="trackLiveBtn" onclick="toggleLiveTracking()">🛰️ Track Live</button>
+                                        </div>
+                                    </div>
+                                    <div id="incidentMap"></div>
+                                    <div class="map-footer-bar">
+                                        <span id="boundaryStatusPill" class="boundary-pill neutral">📍 Tap the map, drag the pin, or use GPS</span>
+                                        <span style="font-size: 0.74rem; color: var(--text-muted);">Pin anywhere in the Philippines</span>
+                                    </div>
+                                </div>
+                                <input type="text" id="incAddress" class="form-control" style="margin-top: 0.6rem;" value="" placeholder="Street / Barangay / City / Province" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="incDescription">Incident Description</label>
+                                <textarea id="incDescription" class="form-control" placeholder="Describe what happened, severity, and any immediate hazards..." required></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Photo Evidence Upload (Sightengine AI-generated detection)</label>
+                                <div class="photo-upload-area" onclick="document.getElementById('incPhotoInput').click()">
+                                    <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">📷</div>
+                                    <div style="font-weight: 700; font-size: 0.88rem; color: var(--navy-blue);">Tap to Upload or Capture Photo Evidence</div>
+                                    <div style="font-size: 0.76rem; color: var(--text-muted);">Checked by Sightengine <code>genai</code> model + pHash duplicate detection</div>
+                                    <input type="file" id="incPhotoInput" accept="image/*" class="hidden" onchange="handlePhotoSelected(event)">
+                                </div>
+
+                                <div id="photoPreviewContainer" class="preview-box hidden">
+                                    <img id="photoPreviewImg" src="" alt="Evidence preview">
+                                    <div>
+                                        <div id="photoFileName" style="font-weight: 700; font-size: 0.85rem;">evidence.jpg</div>
+                                        <div id="photoAiStatusText" style="font-size: 0.78rem; color: var(--emerald-green); font-weight: 600;">Sightengine AI will screen this photo after submission</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-danger w-full">Submit Incident Report</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div id="resTabAdvisories" class="role-tab hidden">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">📢 Barangay Public Advisories</h3>
+                        </div>
+                        <div id="resAdvisoriesList" class="record-list"></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="adminWorkspace" class="hidden">
+
+                <div id="admTabIncidents" class="role-tab">
+                    <div class="kpi-grid" style="margin-bottom: 1.25rem;">
+                        <div class="kpi-card red">
+                            <div class="kpi-label">Active Reports</div>
+                            <div class="kpi-value" id="admKpiReports">0</div>
+                        </div>
+                        <div class="kpi-card yellow">
+                            <div class="kpi-label">AI Flagged Photos</div>
+                            <div class="kpi-value" id="admKpiFlagged">0</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Pending Appointments</div>
+                            <div class="kpi-value" id="admKpiAppts">0</div>
+                        </div>
+                        <div class="kpi-card green">
+                            <div class="kpi-label">Resolved Cases</div>
+                            <div class="kpi-value" id="admKpiResolved">0</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">🛡️ Incident Reports & AI Photo Screening Queue</h3>
+                            <div style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
+                                <span style="font-size: 0.78rem; color: var(--text-muted);">Sightengine flags suspicious photos; Staff make the final decision</span>
+                                <a class="btn btn-outline btn-sm" href="/api/export/reports.csv" onclick="return withAuthDownload(event, this.href)">⬇ Export CSV</a>
+                            </div>
+                        </div>
+                        <div id="adminReportsList" class="record-list"></div>
+                    </div>
+                </div>
+
+                <div id="admTabAppointments" class="role-tab hidden">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">📋 Barangay Document & Appointment Requests</h3>
+                            <a class="btn btn-outline btn-sm" href="/api/export/appointments.csv" onclick="return withAuthDownload(event, this.href)">⬇ Export CSV</a>
+                        </div>
+                        <div id="adminAppointmentsList" class="record-list"></div>
+                    </div>
+                </div>
+
+                <div id="admTabAdvisories" class="role-tab hidden">
+                    <div class="two-col-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">📣 Publish New Barangay Advisory</h3>
+                            </div>
+                            <form onsubmit="handlePublishAdvisory(event)">
+                                <div class="form-group">
+                                    <label for="advTitle">Advisory Headline</label>
+                                    <input type="text" id="advTitle" class="form-control" placeholder="e.g., Scheduled Water Interruption / Flood Alert" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="advSeverity">Alert Level</label>
+                                    <select id="advSeverity" class="form-control">
+                                        <option value="INFO">General Announcement</option>
+                                        <option value="WARNING">Weather / Traffic Advisory</option>
+                                        <option value="EMERGENCY">Urgent Emergency Alert</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="advBody">Message Details</label>
+                                    <textarea id="advBody" class="form-control" placeholder="Enter full advisory message for opted-in residents..." required></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-full">Publish & Queue Opt-In Emails</button>
+                            </form>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">📜 Published Advisories Log</h3>
+                            </div>
+                            <div id="adminAdvisoriesList" class="record-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="admTabUsers" class="role-tab hidden">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">👥 Registered Accounts</h3>
+                            <span style="font-size: 0.78rem; color: var(--text-muted);">
+                                Active status shows last activity. Deleting an account removes all their appointments, reports, and tasks.
+                            </span>
+                        </div>
+                        <div id="adminUsersList" class="record-list"></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="responderWorkspace" class="hidden">
+                <div id="rspTabTasks" class="role-tab">
+                    <div class="kpi-grid" style="margin-bottom: 1.25rem;">
+                        <div class="kpi-card">
+                            <div class="kpi-label">Assigned Tasks</div>
+                            <div class="kpi-value" id="rspKpiAssigned">0</div>
+                        </div>
+                        <div class="kpi-card yellow">
+                            <div class="kpi-label">In Progress</div>
+                            <div class="kpi-value" id="rspKpiProgress">0</div>
+                        </div>
+                        <div class="kpi-card green">
+                            <div class="kpi-label">Completed / Done</div>
+                            <div class="kpi-value" id="rspKpiDone">0</div>
+                        </div>
+                        <div class="kpi-card red">
+                            <div class="kpi-label">High Priority</div>
+                            <div class="kpi-value" id="rspKpiUrgent">0</div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">🚑 My Assigned Field Tasks</h3>
+                            <span style="font-size: 0.78rem; color: var(--text-muted);">Start Task → Upload Proof → Mark Done</span>
+                        </div>
+                        <div id="responderTasksList" class="record-list"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+</main>
+
+<nav id="mobileBottomNav" class="mobile-bottom-nav hidden">
+    <div id="mobileBottomNavInner" class="mobile-bottom-nav-inner"></div>
+</nav>
+
+<div id="duplicateModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+        <h3>⚠️ Nearby Same-Category Report Found</h3>
+        <p id="duplicateModalText">A recent report in the same category was found within 100 meters of your pinned location. Is this the same problem?</p>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="resolveDuplicateChoice(false)">No, Create New Report</button>
+            <button type="button" class="btn btn-primary" onclick="resolveDuplicateChoice(true)">Yes, Append Update</button>
+        </div>
+    </div>
+</div>
+
+<div id="confirmDeleteModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+        <h3>🗑 Confirm Delete</h3>
+        <p id="confirmDeleteText">Are you sure you want to delete this? This action cannot be undone.</p>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="closeConfirmDelete()">Cancel</button>
+            <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+        </div>
+    </div>
+</div>
+
+<div id="customServicesModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+        <h3>⚙️ My Saved Custom Services</h3>
+        <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1rem;">
+            These are services you previously specified. They appear in your dropdown. Deleting them removes them from the dropdown — past appointments keep their history.
+        </p>
+        <div id="customServicesList" class="record-list"></div>
+        <div class="modal-actions" style="margin-top:1rem;">
+            <button type="button" class="btn btn-outline" onclick="closeCustomServices()">Close</button>
+        </div>
+    </div>
+</div>
+
+<div id="customCategoriesModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+        <h3>⚙️ My Saved Custom Categories</h3>
+        <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1rem;">
+            These are incident categories you previously specified. They appear in your dropdown. Deleting them removes them from the dropdown — past reports keep their history.
+        </p>
+        <div id="customCategoriesList" class="record-list"></div>
+        <div class="modal-actions" style="margin-top:1rem;">
+            <button type="button" class="btn btn-outline" onclick="closeCustomCategories()">Close</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="script.js"></script>
+</body>
+</html>
